@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="将app接口服务器改为dotnet core承载 - ORIGAE,Tinypress">
+    <meta name="description" content="将app接口服务器改为dotnet core承载,Tinypress" />
+    <title>将app接口服务器改为dotnet core承载 - ORIGAE</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">ORIGAE</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/19">将app接口服务器改为dotnet core承载</a></h1>
+        <p datetime="5/28/2018 11:04:46 PM" class="post__time">5/28/2018 11:04:46 PM</p>
+    </header>
+    <div class="post__main echo">
+        <p>昨天我的一个 app 的接口服务器挂掉了，国外的小鸡意外的翻车，连同程序和数据一起，猝不及防。我的服务端程序是 asp.net mvc ，小鸡是 256 M 的内存跑不了 windows 系统，装的 mono 。服务器用的 jexus，但是还有一个 apache+php+mysql 的全家桶占用了 80 端口，所以这个接口是通过 apache 反向代理的。</p>
+<p>这样一来本来环境就很复杂了，我 ubuntu 16.04 装 mono 下载了差不多700 mb 的数据，安装后体积更大，简直太不环保了，只有不到 10G 的硬盘。</p>
+<p>于是狠下心将服务器端程序重写，其它快餐语言我不会，据说 nodejs 和 python 会很快，部署也方便。但我还是用我的大 C#，好在现在有 dotnet core 了，也给大家安利一发，它是一个模块化的开发栈，也是未来的所有.NET平台的基础，横跨
+Windows、Linux、OSX 三大主流系统。</p>
+<blockquote>
+<p><strong>dotnet core</strong>  <a href="https://dotnet.github.io/">https://dotnet.github.io/</a></p>
+</blockquote>
+<p>因为我的接口比较简单，主要是输出 json 以及几个静态页面。所以不需要创建 web 项目，我并不想让他寄宿在服务器软件上运行，自己实现 Http 监听处理请求即可，不过这些 dotnet core 已经为你准备好了一个 Server.Kestrel，不需要自己造轮子。</p>
+<p>关于 Server.Kestrel 可以参考<a href="http://blog.jobbole.com/102925/">这篇文章</a> ,更多的还是官方更详细，<a href="https://docs.microsoft.com/zh-cn/aspnet/core/">传送门</a> ，以及源码和示例：https://github.com/aspnet/KestrelHttpServer</p>
+<p>在包管理控制台执行安装：</p>
+<pre><code>PM&gt;  Install-Package Microsoft.AspNetCore.Server.Kestrel -Pre
+</code></pre>
+<p>另外，如果需要静态文件支持，还需要下面的库：</p>
+<pre><code>PM&gt;  Install-Package Microsoft.AspNetCore.StaticFiles -Pre
+</code></pre>
+<p>使用很简单，在 Main 方法里实例化一个 WebHostBuilder 并调用 run 方法就可以，其他的都是配置。</p>
+<pre><code>var host = new WebHostBuilder()
+    .UseKestrel()
+    .UseUrls(&quot;http://*:5001&quot;)
+    .UseContentRoot(Directory.GetCurrentDirectory())
+    .UseStartup&lt;Program&gt;()
+    .Build();
+host.Run();
+</code></pre>
+<p>处理请求简直不要太简单：</p>
+<pre><code>app.Run(async (context) =&gt;
+{
+    byte[] data = Encoding.UTF8.GetBytes(&quot;hello world&quot;);
+    await context.Response.Body.WriteAsync(data, 0, data.Length).ConfigureAwait(false);
+});
+</code></pre>
+<p>但是显然不够强大，无法处理 url 路由，接下来写一个抽象类处理 http 请求。</p>
+<pre><code>abstract class HandlerBase
+{
+    public abstract void Process(HttpContext context);
+}
+</code></pre>
+<p>这里可以用一个 Dictionary&lt;string,Handler&gt; 保存路由：</p>
+<pre><code>_routes = new Dictionary&lt;string, HandlerBase&gt;();
+_routes.Add(&quot;/home/hello&quot;, new Hello());
+_routes.Add(&quot;/test/demo&quot;, new Demo());
+</code></pre>
+<p>Hello 这个类需要继承 HandlerBase 抽象类，重写 Process 方法：</p>
+<pre><code>class Hello : HandlerBase
+{
+    public async override void Process(HttpContext context)
+    {
+        byte[] data = Encoding.UTF8.GetBytes(&quot;hello world&quot;);
+        await context.Response.Body.WriteAsync(data, 0, data.Length).ConfigureAwait(false);
+    }
+}
+</code></pre>
+<p>这样就避免了为了处理路由写一堆 if else，扩展性也比较好，根据 url 路径找到对应的 HandlerBase 的实现，并调用 Process 处理请求。</p>
+<pre><code>app.Run(async (context) =&gt;
+{
+    HandlerBase handler = null;
+    _routes.TryGetValue(context.Request.Path.ToString().ToLower(), out handler);
+    if (handler != null) handler.Process(context);
+    else
+    {
+        byte[] data = Encoding.UTF8.GetBytes(&quot;HTTP 404&quot;);
+        await context.Response.Body.WriteAsync(data, 0, data.Length).ConfigureAwait(false);
+    }
+});
+</code></pre>
+<p><img src="/images/2018_5_636631455195797390.png" alt="" /></p>
+<p>然后就是静态文件的处理问题，建议放一个文件夹存放静态文件，比如创建 dotnet core web 程序时，会有一个 www 的文件夹。</p>
+<p>Kestrel 处理静态内容也很简单：</p>
+<pre><code>app.UseStaticFiles(new StaticFileOptions()
+{
+    FileProvider = _fileProvider,
+    RequestPath = &quot;&quot;
+    
+});
+</code></pre>
+<p>FileProvider  是必须是实现了 IFileProvider 的类。</p>
+<pre><code>IFileProvider _fileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), &quot;www&quot;));
+</code></pre>
+<p>由于 RequestPath  是空字符串，这样一来只要访问 /abc.txt 就会直接映射到 www 目录下的 abc.txt 文件并原始返回。</p>
+<p>发布项目后会产生一个 PublishOutput 文件夹，将里面的内容复制到主机 /home/test 目录中。要运行这个项目还需要在服务器安装 dotnet core ，这并不需要再原代码重新编译了，怎么安装可以参考<a href="https://www.microsoft.com/net/core">官网</a>。</p>
+<p>执行下面命令运行你的项目，如果你的项目叫 demo 😂：</p>
+<pre><code>dotnet demo.dll
+</code></pre>
+<p><img src="/images/2018_5_636631455474649090.png" alt="" /></p>
+<p>关于更多 dotnet core 学习内容</p>
+<ul>
+<li>官方 <a href="https://docs.microsoft.com/zh-cn/dotnet/">https://docs.microsoft.com/zh-cn/dotnet/</a></li>
+<li>Microsoft on Github <a href="https://github.com/Microsoft/dotnet">https://github.com/Microsoft/dotnet</a></li>
+<li>张善友-博客园 <a href="http://www.cnblogs.com/shanyou/">http://www.cnblogs.com/shanyou/</a></li>
+<li>蒋金楠-博客园 <a href="http://www.cnblogs.com/artech/">http://www.cnblogs.com/artech/</a></li>
+</ul>
+<p>最后的最后，如果想深入学习，不要只是创个虚拟机配个环境执行个 Hello World。</p>
+<p>本文在 <strong><a href="http://www.jianshu.com/u/163012fd7793">简书</a></strong> 以及 我的公众号 <strong>天兵公园</strong> 和 <strong><a href="http://xuzhi.me">博客</a></strong> 同步发布，转载前请务必联系。</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 ORIGAE&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Webview 中 JS 与 Java 代码互调用 - ORIGAE,Tinypress">
+    <meta name="description" content="Webview 中 JS 与 Java 代码互调用,Tinypress" />
+    <title>Webview 中 JS 与 Java 代码互调用 - ORIGAE</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">ORIGAE</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/8">Webview 中 JS 与 Java 代码互调用</a></h1>
+        <p datetime="5/28/2018 10:52:54 PM" class="post__time">5/28/2018 10:52:54 PM</p>
+    </header>
+    <div class="post__main echo">
+        <p>Webview 形式的控件是实现 Hybrid App 的唯一途径，android 4.4 以后的 webview 简直太好用了，4.4 以前也能通过集成 chrome 内核解决兼容性问题。我们项目已经把用户注册登录和用户反馈全部改成了
+Webview 的方式，并且整个项目只有一个 Activity 放置了 webview 控件，那要怎么才能满足多个业务需求了。</p>
+<p>众所周知 webview 里的 js 代码和 java 代码相互调用， 需要把 java 的对象传到 javascript，它通过 addJavascriptInterface 的方式添加。所以可以在这个 activity 里动态设置 java 的对象，但问题是， intent 传递 object 对象显得比较麻烦，于是乎，我用了一个单例存放需要调用的 java 对象。</p>
+<pre><code>public enum JsInvoke {
+    instance;
+    private HashMap&lt;String, Object&gt; objs;
+
+    public JsInvoke clear() {
+        if (objs == null)
+            objs = new HashMap&lt;&gt;();
+        else objs.clear();
+        return this;
+    }
+
+    public HashMap&lt;String, Object&gt; getObjs() {
+        return objs;
+    }
+
+    public void add(String key, Object obj) {
+        if (objs == null) return;
+        objs.put(key, obj);
+    }
+}
+</code></pre>
+<p>当我需要打开一个 web 页面时，则通过下列方式传递 java 对象：</p>
+<pre><code>JsInvoke.instance.clear().add(&quot;time&quot;, new Date());
+</code></pre>
+<p>这样就很方便传递对象了。</p>
+<p>接下来就是 js ，每次调用都会进行一些判断，比如：</p>
+<pre><code>if (typeof app !== 'undefined' &amp;&amp; typeof app.hello !=='undefined'){
+       app.hello('hello world');
+}
+</code></pre>
+<p>这就显得比较繁琐了，由于 java 调用对象会在 window 对象中注册，可以考虑从 window 对象中判断，写一个原生方法的 js 调用方法：</p>
+<pre><code>function nativeCall(ns, fn, paras) {
+    if (typeof window[ns] === 'undefined') return null;
+    if (typeof window[ns] !== 'object') return null;
+    if (typeof window[ns][fn] === 'undefined') return null;
+    if (typeof window[ns][fn] !== 'function') return null;
+    return window[ns][fn](paras);
+}
+</code></pre>
+<p>接下来假设 需要调用的 java 对象的类名为 Test，方法名为 demo，参数为字符串 hello world，则只需要用下列代码即可：</p>
+<pre><code>nativeCall('Test','demo','hello world');
+</code></pre>
+<p>这是无参返回的，有参返回的声明一个变量接收杰克，够简单了吧 ：）</p>
+<p>本文在同步 公众号 天兵公园 ，简书同步发布，如需转载请事先联系。</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 ORIGAE&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>

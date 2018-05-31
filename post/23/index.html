@@ -1,0 +1,216 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="一个WinForm富文本编辑器控件 - ORIGAE,Tinypress">
+    <meta name="description" content="一个WinForm富文本编辑器控件,Tinypress" />
+    <title>一个WinForm富文本编辑器控件 - ORIGAE</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">ORIGAE</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/23">一个WinForm富文本编辑器控件</a></h1>
+        <p datetime="5/28/2018 11:11:26 PM" class="post__time">5/28/2018 11:11:26 PM</p>
+    </header>
+    <div class="post__main echo">
+        <p>WinForm 上的富文本编辑器简直不要太少，虽然有 RichEdit，但是这个鬼极难用而且复杂，在插入图片和表格的时候简直抓狂，还要理解复杂的 RTF 格式。</p>
+<p>我希望有一个文本控件，包括基本的格式设置，图片表格插入等，能够自定义打开文件，保存和插入图片等功能，并且它的依赖项要尽可能少，因为是 WinForm 控件，也不用需要跨 Linux 和 Osx 平台，只用在 Windows 下保持兼容就行。这么一来，似乎并没有好的免费控件可用了 ...</p>
+<p>但是，Js 的这类控件就比比皆是了，有没有办法移到 C# WinForm 上来用呢，答案当然是 YES!</p>
+<p>首先要显示 HTML页面和JS的执行，必须要由 WebBrowser 控件承载，所以我们的整个编辑器都会在 WebBrowser 中呈现。接下来是编辑器控件了，尽量轻量级，最好是美观点，文档全面，接口丰富的，我找到我用过的一款。</p>
+<blockquote>
+<p>summernote https://github.com/summernote/summernote/</p>
+</blockquote>
+<p>接下来是编辑器的界面了，创建一个 HTML 页面，呈现编辑器，并设置编译方式为嵌入的资源，将所有的脚本文件内容全部和样式内容写在这个 HTML 页面中，这样一来，页面可能达到惊人的几百 KB，不过这没关系，除了脚本之外，还会有字体资源，关于字体资源如何嵌入在 CSS 中，可以通过下列方式：</p>
+<pre><code>@font-face {
+	font-family: &quot;name&quot;;
+	font-style: normal;
+	font-weight: normal;
+	src: url(data:font/truetype;charset=utf-8;base64,XXX);
+}
+</code></pre>
+<p>需要注意的是 WebBrowser 是 IE 核心，所以只需要 eot 格式的字体即可。关于如何将字体生出你个 Base64 字符串，猛击 http://www.motobit.com/util/base64-decoder-encoder.asp</p>
+<p>编辑器的事件，我们写成接口，由调用方自行实，分别是保存按钮、打开文件按钮、插入图片按钮，异常等事件。</p>
+<pre><code> public interface IKBrowserEventListener
+ {
+     void onSaveClicked();
+     void onOpenFileClicked();
+     void onInsertImageClicked();
+     void onError(Exception ex);
+ }
+</code></pre>
+<p>如何直接使用 WebBrowser 控件的话，会有一些奇怪的问题，比如阻止脚本错误执行的对话框依旧会执行 ... 可是直接使用 COM+ 接口 IWebBrowser2，需要引用 Microsoft Internet Controls。</p>
+<pre><code>public class KBrowser : System.Windows.Forms.WebBrowser
+{
+    private SHDocVw.IWebBrowser2 Iwb2;
+
+    public KBrowser()
+    {
+        NewWindow += KBrowser_NewWindow;
+    }
+
+    private void KBrowser_NewWindow(object sender, System.ComponentModel.CancelEventArgs e)
+    {
+        KBrowser kb = sender as KBrowser;
+        string url = kb.StatusText;
+        Navigate(url);
+        e.Cancel = true;
+    }
+
+    protected override void AttachInterfaces(object nativeActiveXObject)
+    {
+        Iwb2 = (SHDocVw.IWebBrowser2)nativeActiveXObject;
+        Iwb2.Silent = true;
+        base.AttachInterfaces(nativeActiveXObject);
+    }
+
+    protected override void DetachInterfaces()
+    {
+        Iwb2 = null;
+        base.DetachInterfaces();
+    } 
+}
+</code></pre>
+<p>接下来编辑器控件可以用用户控件，拖一个 KBrowser即可，Dock 为 Fill 铺满整个控件。它至少拥有下列属性：</p>
+<pre><code>/// &lt;summary&gt;
+/// 编辑器的事件监听器
+/// &lt;/summary&gt;
+public IKBrowserEventListener KBrowserEventListener { get; set; }
+/// &lt;summary&gt;
+/// 获取或设置编辑器中Html值
+/// &lt;/summary&gt;
+public string Html
+{
+    get
+    {
+        try
+        {
+            return kBrowser1.Document.InvokeScript(&quot;getHtml&quot;, null).ToString();
+        }
+        catch (Exception ex)
+        {
+            onError(ex);
+            return &quot;&quot;;
+        }
+    }
+    set
+    {
+        try
+        {
+            kBrowser1.Document.InvokeScript(&quot;setHtml&quot;, new string[] { value });
+        }
+        catch (Exception ex)
+        {
+            onError(ex);
+        }
+    }
+}
+
+</code></pre>
+<p>在这个 Html 的属性中，包括了 JS 和 C# 的互调用代码，这里是在 C# 中调用  JS 的一个方法，并且一个有返回值但无参数，一个有参数但无返回值。</p>
+<p>如果在 JS 里调用 C#，需要将类设置为 ComVisible(true)，应用到方法级不知是否也可以，没试过。然后 window.external.XXX() 的方式调用，XXX 是 C# 的方法。有没有参看重载就知道了。</p>
+<p>在编辑器控件 OnLoad 时加载 Html 编辑器，因为是嵌入的资源，所以不是通过 File IO 的方式。</p>
+<pre><code> private void KEditor_Load(object sender, EventArgs e)
+ {
+     try
+     {
+         Stream sm = Assembly.GetExecutingAssembly().GetManifestResourceStream(&quot;Knote.Widgets.Resources.editor.html&quot;);
+         byte[] bs = new byte[sm.Length];
+         sm.Read(bs, 0, (int)sm.Length);
+         sm.Close();
+         UTF8Encoding con = new UTF8Encoding();
+         string str = con.GetString(bs);
+         kBrowser1.DocumentText = str;
+     }
+     catch (Exception ex)
+     {
+         onError(ex);
+     }
+ }
+</code></pre>
+<p>然后添加一些方法供 JS 调用，基本就是上述接口中的方法，调用前一定要判断是否空指针。</p>
+<pre><code>/// &lt;summary&gt;
+/// 保存按钮点击的事件，请不要调用，而是使用监听器
+/// &lt;/summary&gt;
+public void onSaveButtonClick()
+{
+    if (KBrowserEventListener != null)
+        KBrowserEventListener.onSaveClicked();
+}
+
+/// &lt;summary&gt;
+/// 打开文件按钮点击的事件，请不要调用，而是使用监听器
+/// &lt;/summary&gt;
+public void onOpenFileButtonClick()
+{
+    if (KBrowserEventListener != null)
+        KBrowserEventListener.onOpenFileClicked();
+}
+
+/// &lt;summary&gt;
+/// 插入图片按钮点击的事件，请不要调用，而是使用监听器
+/// &lt;/summary&gt;
+public void onInsertPictureButtonClick()
+{
+    if (KBrowserEventListener != null)
+        KBrowserEventListener.onInsertImageClicked();
+}
+</code></pre>
+<p>插入普通文本和插入 HTML 源代码。</p>
+<pre><code>/// &lt;summary&gt;
+/// 插入一个节点，它将由 div 元素包裹
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;html&quot;&gt;&lt;/param&gt;
+public void InsertNode(string html)
+{
+    try
+    {
+        kBrowser1.Document.InvokeScript(&quot;insertNode&quot;, new string[] { html });
+    }
+    catch (Exception ex)
+    {
+        onError(ex);
+    }
+}
+
+/// &lt;summary&gt;
+/// 插入文本
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;text&quot;&gt;&lt;/param&gt;
+public void InsertText(string text)
+{
+    try
+    {
+        kBrowser1.Document.InvokeScript(&quot;insertText&quot;, new string[] { text });
+    }
+    catch (Exception ex)
+    {
+        onError(ex);
+    }
+}
+</code></pre>
+<p>为什么是 insertText 和 insertNode，这个是 JS 控件决定的，知道流程后，就可以封装任意编辑器了，最终完成效果如下，并且设计阶段也是所见即所得。</p>
+<p><img src="/images/2018_5_636631459115189690.png" alt="" /></p>
+<p>封装后只有一个 DLL，地址 https://github.com/yahch/kwig</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 ORIGAE&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>

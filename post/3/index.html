@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Minio：一个开源的AWS S3服务器，让你老爷安卓机焕发第二春 - ORIGAE,Tinypress">
+    <meta name="description" content="Minio：一个开源的AWS S3服务器，让你老爷安卓机焕发第二春,Tinypress" />
+    <title>Minio：一个开源的AWS S3服务器，让你老爷安卓机焕发第二春 - ORIGAE</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">ORIGAE</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/3">Minio：一个开源的AWS S3服务器，让你老爷安卓机焕发第二春</a></h1>
+        <p datetime="5/28/2018 10:44:46 PM" class="post__time">5/28/2018 10:44:46 PM</p>
+    </header>
+    <div class="post__main echo">
+        <p>Minio 是一个 AWS S3 的开源实现，基于 Golang 开发，它是一个服务端，客户端可以通过浏览器访问。并且它提供了文件操作的 API，可以方便的为它开发更多的客户端或者使用你熟悉的编程语言访问 minio 上存储的文件。</p>
+<p><img src="/images/2018_5_636631443287124630.png" alt="" /></p>
+<p>现在的手机动辄32GB+的空间，旧手机不利用就太浪费了，我们可以把它当做一个私有云服务器使用。使用 minio 作为私有云服务器端，通常 minio 运行在 Linux 或者 Windows 服务器上，不过官方也提供了 ARM 的编译版本，那么接下来我们将 Minio 部署在 Android 手机上。</p>
+<p>访问 Minio 的官网 <a href="https://minio.io/">https://minio.io/</a> 下载最新的 ARM 编译版本。</p>
+<p>https://dl.minio.io/server/minio/release/linux-arm/minio</p>
+<p>官方已经提供了部署方式，非常简单，但是这一步我们先稍等下操作。</p>
+<pre><code>$ wget https://dl.minio.io/server/minio/release/linux-arm/minio
+$ chmod +x minio
+$ ./minio server ~/Photos
+</code></pre>
+<p>确保手机已经 Root，将 minio 拷贝到手机存储卡里，注意 minio 不能在内置存储或存储卡中执行，因为存储卡被格式化成 noexec 格式，需要 mount 后才能执行，比较麻烦。我是先拷贝到存储卡，然后使用 Root Explorer 到 /mnt 下。</p>
+<p>现在假设你的 minio 的完整路径是 /mnt/minio ，我们为 minio 设置可执行权限。</p>
+<pre><code>su
+chmod 777 /mnt/minio
+</code></pre>
+<p>建议连接电脑后使用 adb 工具操作，如果不方便可以在手机上安装 Termux 后操作。</p>
+<p>接下来在存储卡上建一个文件夹，随便什么都行最好是英文，待会会让 minio 监听这个文件夹，比如我的 S3 ，完整路径 /sdcard/S3，然后启动 minio 服务器。</p>
+<pre><code>su
+cd /mnt
+./minio server /sdcard/S3
+</code></pre>
+<p>然后就看到 minio 已经启动，会显示监听的服务器地址端口，以及 AccessKey和 SecretKey 信息。</p>
+<p><img src="/images/2018_5_636631443413510800.jpg" alt="" /></p>
+<p>Win10 下蜜汁乱码了，正常显示的比较清晰。</p>
+<p>我们打开提示的服务器地址，会出现一个登陆界面。</p>
+<p><img src="/images/2018_5_636631443506092090.jpg" alt="" /></p>
+<p>输入两个Key之后，就可以愉快的上传分享文件了。</p>
+<p>本文在微信公众号 天兵公园 和 简书 同步发布，转载请事先联系。</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 ORIGAE&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>

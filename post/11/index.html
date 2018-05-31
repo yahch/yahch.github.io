@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Android 的 screen 命令和进程守护 - ORIGAE,Tinypress">
+    <meta name="description" content="Android 的 screen 命令和进程守护,Tinypress" />
+    <title>Android 的 screen 命令和进程守护 - ORIGAE</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">ORIGAE</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/11">Android 的 screen 命令和进程守护</a></h1>
+        <p datetime="5/28/2018 10:55:40 PM" class="post__time">5/28/2018 10:55:40 PM</p>
+    </header>
+    <div class="post__main echo">
+        <p>minio 进程启动后，如果这时候关闭了终端窗口或者SSH，其进程也会被结束。那么怎么办呢？对于 Linux 也许很容易做到，使用 screen 命令开一个新的命令窗口，这样就算关闭了这个命令窗口，minio 的进程依旧可以执行，但是 android 手机又该怎么做呢？</p>
+<p>很简单，还是使用 screen，我们不可能再使用 screen 的源代码再编译一次，但是官网 gnu 官网也没有看到它的 arm 版本。这时可以借用 termux 的 pm 命令安装 screen，它会针对当前的手机 cpu 架构下载对应的软件包。</p>
+<p>在 termux 上安装 screen，推荐使用清华大学的镜像。</p>
+<p>https://mirrors.tuna.tsinghua.edu.cn/help/termux/</p>
+<p>安装命令：</p>
+<pre><code>pm install screen
+</code></pre>
+<p>安装完成后，在 /data/data/com.termux/files/usr/bin 目录找到 screen 二进制文件，它依赖下列四个文件：</p>
+<pre><code>libcrypto.so.1.0.0
+libutil.so
+libncursesw.so.6
+libcrypt.so
+</code></pre>
+<p>可以在 /data/data/com.termux/files/usr/lib 目录中找到。</p>
+<p>然后将 screen 文件复制到 /system/bin 目录，.so 文件复制到 /system/lib 目录，用 chown 命令指定用户为当前目录的用户保持一致。</p>
+<p>在 adb shell 下执行 screen 看窗口有无执行成功，缺少什么 so 就去 termux 的 lib 目录下找通常都能找到。screen 命令很简单，可以参考 GNU 文档 ：</p>
+<p>http://www.gnu.org/software/screen/manual/screen.txt</p>
+<p>一般是 screen 命令后就进入一个新窗口，执行命令后按 Ctrl + A +D 离开当前窗口，注意是离开而不是推出关闭。执行 screen -ls 可以查看活动的窗口，screen -r id 可以重新打开窗口会话，kill -9 id 杀死窗口会话的进程，screen -wipe 将所有被 kill 的进程会话从 screen list 中移除，常用的就这么多。</p>
+<p>这个我在 android 6.0.1 上测试，使用 screen 命令将 minio 进程退到后台，关闭了 shell 后，进程仍在运行不受影响。</p>
+<p>然后说说这个进程守护，肯定大家都知道 supervise 这个 python 编写的工具，可以通过 pip 安装，这里就不深入了，反正网上的资料一大把，我目前是用它守护我的 dotnet core 进程，目前69天不间断运行。</p>
+<p><img src="/images/2018_5_636631449618561880.jpg" alt="" /></p>
+<p>不过问题是 android 没有自带 python ，只有 Termux 下有个 python，Termux是个 android app，所以这一套在 android 手机这个场景下基本没卵用了，不过可以写个 service 持续监控。</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 ORIGAE&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>

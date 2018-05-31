@@ -1,0 +1,91 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="一个高性能的.NET序列化库：ZeroFormatter - ORIGAE,Tinypress">
+    <meta name="description" content="一个高性能的.NET序列化库：ZeroFormatter,Tinypress" />
+    <title>一个高性能的.NET序列化库：ZeroFormatter - ORIGAE</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">ORIGAE</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/6">一个高性能的.NET序列化库：ZeroFormatter</a></h1>
+        <p datetime="5/28/2018 10:50:03 PM" class="post__time">5/28/2018 10:50:03 PM</p>
+    </header>
+    <div class="post__main echo">
+        <p>常见的序列化方式有有 XML JSON 以及二进制，XML 和 JSON 因为都是文本，在有些场景并不合适使用，自带的二进制序列化产生的干扰太多，于是上全球最大的同性交友网站上找了一个序列化库，这货很好用，并且还支持 .NET Core 和 Unity。</p>
+<blockquote>
+<p>Github:https://github.com/neuecc/ZeroFormatter
+Nuget:https://www.nuget.org/packages/ZeroFormatter</p>
+</blockquote>
+<p>推荐用 PM 安装：</p>
+<pre><code>PM&gt; Install-Package ZeroFormatter
+</code></pre>
+<p>将你的需要序列化的类标记为 ZeroFormattable ，不需要序列化的字段标记为 IgnoreFormat</p>
+<pre><code>[ZeroFormattable]
+public class MyClass
+{
+    // Index is key of serialization
+    [Index(0)]
+    public virtual int Age { get; set; }
+
+    [Index(1)]
+    public virtual string FirstName { get; set; }
+
+    [Index(2)]
+    public virtual string LastName { get; set; }
+
+    // When mark IgnoreFormatAttribute, out of the serialization target
+    [IgnoreFormat]
+    public string FullName { get { return FirstName + LastName; } }
+
+    [Index(3)]
+    public virtual IList&lt;int&gt; List { get; set; }
+}
+</code></pre>
+<p>使用方法：</p>
+<pre><code>class Program
+{
+    static void Main(string[] args)
+    {
+        var mc = new MyClass
+        {
+            Age = 99,
+            FirstName = &quot;hoge&quot;,
+            LastName = &quot;huga&quot;,
+            List = new List&lt;int&gt; { 1, 10, 100 }
+        };
+
+        var bytes = ZeroFormatterSerializer.Serialize(mc);
+        var mc2 = ZeroFormatterSerializer.Deserialize&lt;MyClass&gt;(bytes);
+
+        // ZeroFormatter.DynamicObjectSegments.MyClass
+        Console.WriteLine(mc2.GetType().FullName);
+    }
+}
+</code></pre>
+<p>按照官方的例子序列化生成的 byte[] 长度只有 60 个字节！太简洁了有木有。</p>
+<p>本文在依然在 天兵公园 公众号，<a href="http://www.jianshu.com/p/87aa4277e515">简书</a> 同步发布，转载前务必联系</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 ORIGAE&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>

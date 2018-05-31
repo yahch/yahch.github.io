@@ -1,0 +1,114 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="用委托封装C#的Try...Catch - ORIGAE,Tinypress">
+    <meta name="description" content="用委托封装C#的Try...Catch,Tinypress" />
+    <title>用委托封装C#的Try...Catch - ORIGAE</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">ORIGAE</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/5">用委托封装C#的Try...Catch</a></h1>
+        <p datetime="5/28/2018 10:48:34 PM" class="post__time">5/28/2018 10:48:34 PM</p>
+    </header>
+    <div class="post__main echo">
+        <p>开发软件过程中，为了防止程序崩溃出错都会用 try ... catch 包裹住会产生异常的代码。随着项目越来越大，try ... catch 语句到处都是，令人眼花的花括号，丑陋无比的缩进让人崩溃。</p>
+<p>IO 操作通常最容易引发异常，文件读写网络访问数据库操作这些，比如读取当前目录的文本：</p>
+<pre><code>string text = System.IO.File.ReadAllText(&quot;demo.txt&quot;);
+Console.WriteLine(text);
+</code></pre>
+<p><img src="/images/2018_5_636631445364282130.png" alt="" /></p>
+<p>这时就需要在外层用 try ... catch 将这两行代码包括起来，并提示错误：</p>
+<pre><code>try
+{
+    string text = System.IO.File.ReadAllText(&quot;demo.txt&quot;);
+    Console.WriteLine(text);
+}
+catch (System.IO.IOException ex)
+{
+    Console.WriteLine(ex.Message);
+}
+
+</code></pre>
+<p>为了简化上面的代码结构，在这里我们可以设计一个静态方法，将需要执行的代码作为参数，在 try ... catch 里执行它。如何将要执行的代码作为参数传给另外一个方法呢，我们可以用 Action<T> 和 Fun<T> 委托，他们一个是无返回参数，一个是有返回参数。</p>
+<pre><code>public static void Try(Action act, Action&lt;Exception&gt; errorCallback = null)
+{
+    try
+    {
+        act();
+    }
+    catch (Exception ex)
+    {
+        errorCallback?.Invoke(ex);
+    }
+}
+
+</code></pre>
+<p>这个 Try 方法接受两个委托作为参数，第一个是要执行的代码，第二个是出现了异常也好返回一个 Exception 类型给调用方，并且它是一个可为 null 类型的参数，也就是可选参数。</p>
+<p>把这个方法放到一个静态类 TryCatch 里，在调用的类使用 using 语句使用这个静态类，没错，C# 6 就是这么叼。</p>
+<pre><code>using static TryCatch;
+</code></pre>
+<p>改造后的语句：</p>
+<pre><code>string text = &quot;&quot;;
+Try(() =&gt;
+{
+    text = System.IO.File.ReadAllText(&quot;demo.txt&quot;);
+}, error =&gt;
+{
+     WriteLine(error.Message);
+});
+
+</code></pre>
+<p>这里就很厉害了，代码竟然没有变短反而变长了和更难理解了。</p>
+<p>继续改造，使用 Func<T>：</p>
+<pre><code>public static T Try&lt;T&gt;(Func&lt;T&gt; func, Func&lt;Exception, T&gt; errorCallback = null)
+{
+    try
+    {
+        return func();
+    }
+    catch (Exception ex)
+    {
+        if (errorCallback != null)
+        {
+            return errorCallback(ex);
+        }
+        return default(T);
+    }
+}
+
+</code></pre>
+<p>再继续改造刚才的代码：</p>
+<pre><code>string text = Try(()=&gt; { return System.IO.File.ReadAllText(&quot;demo.txt&quot;); });
+WriteLine(text);
+</code></pre>
+<p>震惊！某知名函数竟然不报错，原因竟然是这：</p>
+<pre><code>return default(T);
+</code></pre>
+<p>很好理解，就是返回默认值了。</p>
+<p>可以在那两个静态类里加入 logger，这样每一个 try ... catch 报错都可以记录下来，同理还可以对实现了 IDispose 接口的类封装，省略 using 代码块。</p>
+<p>本文在依然在 天兵公园 公众号，<a href="http://www.jianshu.com/p/694fcd55e45e">简书</a> 同步发布，转载前务必联系</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 ORIGAE&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>

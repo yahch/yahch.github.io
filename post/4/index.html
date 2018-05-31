@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="巧用 Windows 下临时环境变量聚合常用工具 - ORIGAE,Tinypress">
+    <meta name="description" content="巧用 Windows 下临时环境变量聚合常用工具,Tinypress" />
+    <title>巧用 Windows 下临时环境变量聚合常用工具 - ORIGAE</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">ORIGAE</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/4">巧用 Windows 下临时环境变量聚合常用工具</a></h1>
+        <p datetime="5/28/2018 10:46:54 PM" class="post__time">5/28/2018 10:46:54 PM</p>
+    </header>
+    <div class="post__main echo">
+        <p>这篇文章主要是由今天解决电脑上 android adb 工具版本各异想到的，每次要用 adb 的时候都要手忙脚乱的点开开始菜单，找到命令提示符，再输入 adb，经常其它的 adb 工具也在运行，像豌豆荚或者应用宝之类的，然后等待这些应用的 adb 程序结束。好不容易输完命令，发现因为不是上次调用的 adb ，手机需要重新确认开发者选项权限...</p>
+<p>想到之前使用 Msbuild 可以直接在 VS 附带的工具里打开一个命令行，包含了所有 VS 相关的工具，很是方便，于是就想也把这些常用的命令行工具也加入到一个自定义的命令提示符里，如果同时需要 vs 开发人员命令提示和 android platform tools ，还可以对 VsDevCmd.bat 进行一番改造，当然还有更多的发散。</p>
+<p>说道环境变量，在 windows 下做 java 开发的码农肯定不陌生，但是通常我们不需要将某些路径永久的设置到环境变量中又该如何做呢。</p>
+<p>如果你装了 visual studio ，就会在附带的工具目录中找到 【VS20XX 开发人员命令提示】的一个快捷方式。</p>
+<p><img src="/images/2018_5_636631444440644440.png" alt="" /></p>
+<p>这个快捷方式指向的目标是：</p>
+<pre><code>%comspec% /k &quot;&quot;C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\VsDevCmd.bat&quot;&quot;
+</code></pre>
+<p>我们在系统环境变量中查看或者使用 echo 命令查看 %comspec% 定义的路径：</p>
+<pre><code>echo %comspec%
+</code></pre>
+<p>可以看到输出路径为：<strong>C:\Windows\system32\cmd.exe</strong> ，参数 <strong>/k</strong> 表示执行后不关闭窗口，再看看这个 <strong>VsDevCmd.bat</strong> 的内容，前面的一堆可以不用看，就看这两行：</p>
+<pre><code>@if not &quot;%WindowsSDK_ExecutablePath_x86%&quot; == &quot;&quot; (
+	@set &quot;PATH=%WindowsSDK_ExecutablePath_x86%;%PATH%&quot;
+)
+</code></pre>
+<p><strong>@</strong> 表示执行命令但是不回显过程和结果，<strong>set PATH=XXX;%PATH%</strong> 表示在现有的环境变量之前设置 XXX 到环境变量中。</p>
+<p>这个快捷方式的作用就比较明了，调用 cmd 命令，执行一个批处理，批处理临时设置一些环境变量，同时 cmd 窗口不关闭，用户在这个新的 cmd 中可以使用临时环境变量的路径和程序。</p>
+<p>假如我们有一些小程序，频繁的需要操作命令行，在各个工具之间切换，这时这个方法就有用武之地了，可以将程序都放到一个文件夹下，比如 d:\abc。然后创建一个批处理：</p>
+<pre><code>set PATH=d:\abc;%PATH%
+</code></pre>
+<p>然后创建一个快捷方式，指向 cmd 并附加参数为这个批处理的路径：</p>
+<pre><code>%comspec% /k &quot;&quot;d:\test.bat&quot;&quot;
+</code></pre>
+<p>然后将这个快递方式放到桌面或固定在任务栏，下次需要直接在 cmd 里启动的程序，可以全部都放到对应的 d:\abc 目录即可。</p>
+<p>本文在 天兵公园 公众号，<a href="http://xuzhi.me">博客</a>，<a href="http://www.jianshu.com/p/694fcd55e45e">简书</a> 同步发布，转载前务必联系</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 ORIGAE&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>
