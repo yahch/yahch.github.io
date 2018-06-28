@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="就算开发Android APP也得懂一点API接口开发 - 老徐博客,Tinypress">
+    <meta name="description" content="就算开发Android APP也得懂一点API接口开发,Tinypress" />
+    <title>就算开发Android APP也得懂一点API接口开发 - 老徐博客</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">老徐博客</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/25">就算开发Android APP也得懂一点API接口开发</a></h1>
+        <p datetime="2018/6/28 23:10:32" class="post__time">2018/6/28 23:10:32</p>
+    </header>
+    <div class="post__main echo">
+        <p>很多开发 APP 的童鞋还只是会在 Android Studio 上写一些 Java 代码，对 API 接口，服务之类的知之甚少，也对 HTML/CSS/JS 一片朦胧，我觉得这是不好的，扩大知识面还是很有必要的，就算不能解决实际问题，有时候会提供一种解决问题的思路，比如某个产品老板要你一个月上线，怎么办呢。原生代码一行一行不知道要写到什么时候去了，公司 UI，前端，JS工程师一个都调动不起来。相反如果了解快速开发技巧，混合开发之类的技术，就能减少很多工作量了。</p>
+<p><img src="/images/2018_6_636658241625321262.jpg" alt="" /></p>
+<p>我一直喜欢用 .NET 作为后端接口开发语言，因为 .NET 开发效率确实非常高，标准库也非常成熟健全，不至于随便什么都要第三方的，用它主要看中的就是在开发效率和工业标准能够两者都能兼顾的特点，我觉得还行。</p>
+<p><img src="/images/2018_6_636658241687916902.png" alt="" /></p>
+<p>很多人一打开 Visual Studio 就已经啥了，创建项目都不知道点哪个，也不知道该创建什么类型的项目。是酱紫的，目前微软主要是推 .NET Core 和 .NET Framework 的，.NET Framework 是只能运行在 Windows 平台上的，虽然在 Linux 上有 Mono Runtime 支持 .NET 程序的运行，但是运行效率比 .NET 在 Windows 上的还是有些差距。.NET Core 是微软推出的下一代编程框架，在1.X 版本的时候，只能支持开发 Web 和 CLI 程序，不过如今可以开发 WPF 桌面程序了，虽然目前还只能在 Windows 上运行，但是谁知道以后会不会在 Linux 上也实现了桌面 GUI 环境呢。</p>
+<p>.NET Core 很好，网上教程也很多，这个是灰常建议去学习的，不过我还是比较习惯用 ASP.NET MVC 和 WebForm 方式，当然拖控件是不可能拖控件了，这辈子都不可能拖控件，就是用用一般处理程序写写接口，才能维持得了生活的样子。</p>
+<p>既然是服务接口，那就意味着没有什么界面，或者及少量的界面，用一般处理程序是坠吼的。</p>
+<p><img src="/images/2018_6_636658241751598991.png" alt="" /></p>
+<p>创建一个 ASP.NET Web 应用程序 (.NET Framework)，然后选择空项目，下一步就可以了。</p>
+<p>接下来需要创建一个 HttpHandler 的实现类，并稍作封装，让它成为我们接口的基础类，因为直接使用 HttpHandler 是不那么友好的，目前不需要了解为什么要这么做。</p>
+<p>如果是为了考虑稳定性，不那么在乎性能，可以将整个 ProcessRequest 都用 Try Catch 包裹，避免因为接口中的错误，导致 APP 未能处理正确的返回而导致闪退，虽然这种办法很挫，但是我很喜欢用。</p>
+<pre><code> public void ProcessRequest(HttpContext context)
+ {
+
+     if (context.Request.RequestType != &quot;POST&quot;)
+     {
+         context.Response.StatusCode = 405;
+         return;
+     }
+
+     AllowCrossDomain = true;
+     TryExecute.Execute(() =&gt;
+     {
+         Context = context;
+         ProcessUserRequest();
+     }, error =&gt;
+      {
+          bool processed = false;
+
+          if (error is SilverStarAmsException)
+          {
+              var serror = error as SilverStarAmsException;
+              if (serror != null)
+              {
+                  ResponseAsErrorJson(serror.ErrorCode, serror.Message);
+                  processed = true;
+              }
+          }
+
+          if (!processed)
+          {
+              ResponseAsErrorJson(-11, &quot;process api request error&quot;);
+          }
+      });
+ }
+</code></pre>
+<p>其次，API 接口或许会被小程序或其它服务用到，我们对其做一个跨域的测试，在 Header 头输出对应的消息，客户端即可实现跨域请求，这时的客户端通常是浏览器，因为浏览器为了安全性会设置同源策略，如果接口不支持跨域，接口就不能被使用。</p>
+<p>在 ASP.NET 里设置 Header 有很多种方法，为了适应 IIS 的经典和集成模式，以及或许有其他 Web 容器的支持，我都会写一遍，哪种支持就是用哪种，然后就有了下面的奇怪的代码：</p>
+<pre><code>protected void AppenHeader(string key, string value)
+{
+
+    bool done = false;
+
+    try
+    {
+        Context.Response.AppendHeader(key, value);
+        done = true;
+    }
+    catch
+    {
+
+    }
+
+    if (!done)
+    {
+        try
+        {
+            Context.Response.Headers.Add(key, value);
+            done = true;
+        }
+        catch
+        {
+
+        }
+    }
+
+    if (!done)
+    {
+        try
+        {
+            Context.Response.AddHeader(key, value);
+            done = true;
+        }
+        catch
+        {
+
+        }
+    }
+}
+</code></pre>
+<p>对于 APP 接口来说，通常是不会或者对于安全性很低的情况下才会用到 GET 请求，当然合服 Restful 规范的可能也会用的多，比如订单的增删改查：</p>
+<pre><code>PUT /api/order
+DELETE /api/order/12
+PATCH /api/order/12
+GET /api/order/12
+</code></pre>
+<p>如果觉得不需要这么多的 HTTP 谓词，只用 POST 也是可以的。</p>
+<p><img src="/images/2018_6_636658241869044528.png" alt="" /></p>
+<p>我上家公司的 APP 接口全部是这种实现，好吧，其实都是我实现的，虽然只有数十万用户，但是目前来看，这种架构还能支撑，而且这也不是性能的瓶颈，只能说在可维护性上断然没有 Restful 方式的好。</p>
+<p><img src="/images/2018_6_636658241995006228.png" alt="" /></p>
+<p>接下来我需要建立一个数据库，继续是 .NET 当然配合 MSSQL 是坠吼的了，设计数据库和表此处略去不表，ORM 我是用 EntityFramework 6.x 。</p>
+<p>以一个简单例子，在数据库中创建了一个 Category 表，表示文章或者某种物体的分类，现在要在 APP 里获取 Category 列表，每页显示 20 条数据，或者由 APP 指定参数。</p>
+<p>创建一个一般处理程序，GetCategory.ashx ，继承刚才上面的自定义的 Handler，重写 ProcessUserRequest 接口。</p>
+<p>声明三个参数，表示总页数，当前页码，分页大小：</p>
+<pre><code>  int page, pageSize, totalPage;
+</code></pre>
+<p>对于数据库的访问，其实超简单，看我怎么查出所有数据：</p>
+<pre><code>totalPage = (int)(Math.Ceiling((double)all.Count() / pageSize));
+
+if (page &gt; totalPage) page = totalPage;
+if (page &lt; 1) page = 1;
+
+var data = all.OrderByDescending(s =&gt; s.CategoryLastChangeDate).Skip((page - 1) * pageSize).Take(pageSize).ToList();
+</code></pre>
+<p>然后输出查询出当前页的数据，并输出到 JSON，对象转为 JSON ，并不能保证是 100% 成功的，对于 APP 的接口服务来说，稳定性最重要，就算是接口出错，也必须得返回出错代码，所以前面的 Handler 的子类有一个超大的 Try ，对于 JSON 输出，也应如此。</p>
+<pre><code>protected void ResponseAsJson(object data)
+{
+    string json = &quot;[]&quot;;
+
+    TryExecute.Execute(() =&gt;
+    {
+        json = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+
+    }, error =&gt;
+    {
+        json = GetGenericErrorJson(-10, &quot;serialize data error&quot;);
+    });
+
+    ResponseAsJsonString(json);
+}
+</code></pre>
+<p>完整的接口代码如下：</p>
+<pre><code>/// &lt;summary&gt;
+/// GetCategory 的摘要说明
+/// &lt;/summary&gt;
+public class GetCategory : Core.SilverCoreHandlerBase
+{
+
+    public override void ProcessUserRequest()
+    {
+        base.ProcessUserRequest();
+
+        int page, pageSize, totalPage;
+
+        page = (Context.Request[&quot;page&quot;] + &quot;&quot;).AsInt(0);
+        pageSize = (Context.Request[&quot;page_size&quot;] + &quot;&quot;).AsInt(0);
+
+        if (page &lt; 1) page = 1;
+        if (pageSize &lt; 1 || pageSize &gt; 50) pageSize = 50;
+
+        var db = new Data.SilverStarDB();
+        var all = db.KoteiAssetCategory;
+
+        totalPage = (int)(Math.Ceiling((double)all.Count() / pageSize));
+
+        if (page &gt; totalPage) page = totalPage;
+        if (page &lt; 1) page = 1;
+
+        var data = all.OrderByDescending(s =&gt; s.CategoryLastChangeDate).Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        ResponseAsJson(new { page = page, total_page = totalPage, data = data });
+
+    }
+}
+</code></pre>
+<p>F5 执行看看，会提示不支持的谓词，当然了，只支持 POST 的啊！可以用 POSTMAN 工具调试。</p>
+<p><img src="/images/2018_6_636658242164325532.png" alt="" /></p>
+<p>好了，看看最终输出的 JSON 结果：</p>
+<p><img src="/images/2018_6_636658242275302804.png" alt="" /></p>
+<p>如此，在 APP 中使用相关的 HTTP 库，就可以完成接口的调用了，敲你吗简单！</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 老徐博客&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>
