@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Google Map 中根据方向传感器对 Marker 进行旋转 - 老徐博客,Tinypress">
+    <meta name="description" content="Google Map 中根据方向传感器对 Marker 进行旋转,Tinypress" />
+    <title>Google Map 中根据方向传感器对 Marker 进行旋转 - 老徐博客</title>
+    <link href="/styles/main.css" rel="stylesheet" />
+</head>
+<body>
+    <header class="head">
+        <h1 class="head-title u-fl"><a href="/">老徐博客</a></h1>
+        <nav class="head-nav u-fr">
+            <ul class="head-nav__list">
+                
+            </ul>
+        </nav>
+    </header>
+    <main class="main"><article class="post">
+    <header class="post__head">
+        <h1 class="post__title"><a href="/post/26">Google Map 中根据方向传感器对 Marker 进行旋转</a></h1>
+        <p datetime="2018/6/29 22:54:47" class="post__time">2018/6/29 22:54:47</p>
+    </header>
+    <div class="post__main echo">
+        <p>这是最近做的一个小功能，虽然很简单，网上却很少有相关例子，关于怎么使用地磁和加速度传感器的例子是有了，怎么旋转 Google Map Marker 也能 Google 到一些，但是结合起来就基本没看到，也可能是我搜索方式不对，所以还是自己来实现了。</p>
+<p>首先找找 Google Map Marker 相关的文档，如何使用可以参见这个：</p>
+<p>https://developers.google.com/maps/documentation/android-sdk/marker?hl=zh-cn</p>
+<p>对于 Marker 类可以参考：</p>
+<p>https://developers.google.com/android/reference/com/google/android/gms/maps/model/Marker?hl=zh-cn</p>
+<p>(2018/06/29 验证)</p>
+<p>Marker 有一个很重要的属性：Anchor，请记者这个小东西，后面要用到它，官方的解释是 ：</p>
+<blockquote>
+<p>The point on the image that will be placed at the <a href="https://developers.google.com/android/reference/com/google/android/gms/maps/model/LatLng.html?hl=zh-cn">LatLng</a> position of the marker. This defaults to 50% from the left of the image and at the bottom of the image.</p>
+</blockquote>
+<p>接着说说怎么利用方向传感器，在 Android 中，方位是通过加速度传感器和地磁传感器共同确定。</p>
+<pre><code>sensorManager = (SensorManager) getActivity().getSystemService(Context.SENSOR_SERVICE);
+Sensor magnetic = null;
+if (sensorManager != null) {
+    magnetic = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+}
+Sensor acceleromter = null;
+if (sensorManager != null) {
+    acceleromter = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+}
+if (sensorManager != null) {
+    sensorManager.registerListener(sensorEventListener, magnetic, SensorManager.SENSOR_DELAY_GAME);
+}
+if (sensorManager != null) {
+    sensorManager.registerListener(sensorEventListener, acceleromter, SensorManager.SENSOR_DELAY_GAME);
+}
+</code></pre>
+<p>在获取到传感器的数据后，可以获取用户此时旋转了多少度，然后再对 Marker 进行旋转。</p>
+<pre><code>private SensorEventListener sensorEventListener = new SensorEventListener() {
+      @Override
+      public void onSensorChanged(SensorEvent event) {
+       
+      }
+      @Override
+      public void onAccuracyChanged(Sensor sensor, int accuracy) {
+      }
+ };
+</code></pre>
+<p>我们的逻辑代码就写在 onSensorChanged 方法里，准备两个 float 类型的数据，分别存储地磁传感器和加速度传感器的数据。</p>
+<pre><code> float[] magneticValues = new float[3];
+ float[] acceleromterValues = new float[3];
+</code></pre>
+<p>传感器的数据更新是非常快的，为了避免 Marker 旋转像是遇到了鬼一样，我们对时间间隔和更新角度信息做个显示，定义两个变量分别表示上次旋转的角度和上次传感器数据更新的时间。</p>
+<pre><code>private float lastRotateDegree;
+private long lastUpdatetime;
+</code></pre>
+<p>将传感器数据赋值给数组：</p>
+<pre><code> // 判断数据来源于哪个传感器
+ if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+     acceleromterValues = event.values.clone();
+ } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+     magneticValues = event.values.clone();
+ }
+</code></pre>
+<p>为了得到传感器的航向角、俯仰角、横滚角等数据，我们需要计算一个旋转矩阵，不过 SensorManager 已经提供了，只需要调用就可以了，并用新的数组保存他们。</p>
+<pre><code>float[] R = new float[9];
+float[] values = new float[3];
+SensorManager.getRotationMatrix(R, null, acceleromterValues, magneticValues);
+SensorManager.getOrientation(R, values);
+</code></pre>
+<p>接下来计算出旋转角度，并用 0~360° 表示。</p>
+<pre><code> float roteteDegree = -(float) Math.toDegrees(values[0]);
+ if (roteteDegree &lt; 0) roteteDegree = 360 + roteteDegree;
+ if (roteteDegree &lt; 0 || roteteDegree &gt; 360) return;
+</code></pre>
+<p>计算本次旋转角度更新的度数，定义如果在 0.5°之间是属于抖动，直接过滤掉，不予更新。</p>
+<pre><code>float offset = roteteDegree - lastRotateDegree;
+if (Math.abs(offset) &lt; 0.5f) return;
+</code></pre>
+<p>在得到了 roteteDegree 的值后，就已经可以把角度传递给 Marker，Google Map Marker 中的 setRotation 方法可以让 Marker 进行旋转。</p>
+<pre><code> gUserMarker.setRotation(roteteDegree);
+</code></pre>
+<p>好了，真机运行看看，emmm... Marker 的旋转十分奇怪啊，怎么以边界为原点进行旋转，而不是以中心点旋转，这就像一个圆形的门牌，最上面边缘的钉子掉了一样。这时再回顾看看 Marker 类中 Anchor，setAnchor  可以设定它的值，文档地址：</p>
+<p>https://developers.google.com/android/reference/com/google/android/gms/maps/model/Marker?hl=zh-cn#setAnchor(float,%20float)</p>
+<p>官方画了一个直击灵魂的图表示这个属性值是什么作用：</p>
+<p><img src="/images/2018_6_636659096831294387.png" alt="" /></p>
+<p>所以，给它设定 0.5,0.5 就圆点居中了，不信阔以试一试~</p>
+
+    </div>
+</article></main>
+    <footer class="foot">
+        <div class="foot-copy u-fl">© 2018 老徐博客&nbsp;&nbsp;|&nbsp;&nbsp; POWERED BY TiNYFX</div>
+        <menu class="page-menu u-fr">
+            
+            
+        </menu>
+    </footer>
+</body>
+</html>
