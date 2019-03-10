@@ -1,0 +1,72 @@
+﻿<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta http-equiv="Content-Type" content="text/html" charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <title>在树莓派B上安装 TP-LINK TL-WN823N 无线网卡 - TFSIS</title>
+    <meta name="description" content="在树莓派B上安装 TP-LINK TL-WN823N 无线网卡" />
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="MobileOptimized" content="320" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" type="text/css" href="/styles/normalize.css?v=281b1bfc21" />
+    <link rel="stylesheet" type="text/css" href="/styles/screen.css?v=281b1bfc21" />
+    <meta name="generator" content="Microsoft .NET" />
+</head>
+<body class="home-template">
+    <header id="site-head">
+        <a id="blog-logo" href="/"><div class="bloglogo" style="background: url(/resources/images.logo.png)"></div></a>
+        <h1 class="blog-title"><a href="/">TFSIS</a></h1>
+        
+        <div style="border-bottom:1px solid #ecf0f1;height:1px;"></div>
+        
+    </header>
+    <main class="content" role="main">    <article class="preview">
+        <header>
+            <h1 class="post-title"><a href="/post/636878282862865498">在树莓派B上安装 TP-LINK TL-WN823N 无线网卡</a></h1>
+            <div class="post-meta"><time datetime="2019/3/10 15:24:46">2019/3/10 15:24:46</time></div>
+        </header>
+        <section class="post-content">
+            <p>Source:https://www.raspberrypi.org/forums/viewtopic.php?t=198015</p>
+<p>The TL-WN823N v2 you have uses the 8192eu driver. The driver in not included in the Raspbian image and needs installing.</p>
+<p>I have a script that will install a driver I compile if you are using the RASPBIAN OS.</p>
+<p>You can download and install the script using commands</p>
+<pre><code>sudo wget http://fars-robotics.net/install-wifi -O /usr/bin/install-wifi
+sudo chmod +x /usr/bin/install-wifi
+</code></pre>
+<p>With the wifi dongle connected to the Pi to install the driver run command</p>
+<pre><code>sudo install-wifi
+</code></pre>
+<p>Changes (wlan0 can have another name if you're using Raspberry PI 3):</p>
+<ol>
+<li>Instead of using <strong>/etc/network/interfaces</strong>, I've added the definition block to <strong>/etc/dhcpcd.conf</strong></li>
+</ol>
+<pre><code>interface wlan0
+static ip_address=192.168.42.1/24
+static ip6_address=fd0d:e8cf:c363:2605::1/64
+static routers=192.168.42.1
+</code></pre>
+<ol start="2">
+<li>
+<p>Comment out <strong>driver</strong> line in the proposed <strong>/etc/hostapd/hostapd.conf</strong> version</p>
+</li>
+<li>
+<p>No need for <strong>Update hostapd (maybe)</strong> section (kernel v4.14 at the time I'm writing this).</p>
+</li>
+<li>
+<p>Did not need to remove wpa_supplicant. Beware of this if you want to keep using your Raspi 3 as a wifi client (I assume this is what you wanted buying an extra wifi device).</p>
+</li>
+<li>
+<p>I used <strong>systemctl</strong> instead of <strong>service</strong> command</p>
+</li>
+</ol>
+
+        </section>
+    </article>    </main>
+    <footer class="site-footer">
+        <div class="inner">
+            <section class="copyright">&copy; 2019 <a href="/">TFSIS</a>. All rights reserved.</   section>
+            <section class="poweredby">powered by .NET technology</section>
+        </div>
+    </footer>
+</body>
+</html>
